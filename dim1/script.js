@@ -78,13 +78,32 @@ document.addEventListener('DOMContentLoaded', function() {
     // ===== FORM SUBMISSION =====
     var contactForm = document.getElementById('lead-form');
     if (contactForm) {
-        contactForm.addEventListener('submit', function(e) {
+        contactForm.addEventListener('submit', async function(e) {
             e.preventDefault();
-            var inputs = this.querySelectorAll('input');
-            var data = {};
-            inputs.forEach(function(input) { data[input.placeholder] = input.value; });
-            console.log('Lead submitted:', data);
-            this.innerHTML = '<div style="text-align:center;padding:2rem;"><h3 style="color:var(--accent);font-size:1.5rem;margin-bottom:1rem;">You\'re In!</h3><p style="font-size:1.1rem;">Cassidy will personally reach out within 24 hours to schedule your free strategy session.</p><p style="margin-top:1rem;font-size:0.95rem;opacity:0.8;">Check your phone - we like to call first.</p></div>';
+            var submitBtn = this.querySelector('button[type="submit"]');
+            var originalBtnText = submitBtn.textContent;
+            submitBtn.textContent = 'Sending...';
+            submitBtn.disabled = true;
+
+            var formData = new FormData(this);
+            var data = Object.fromEntries(formData.entries());
+
+            try {
+                const response = await fetch('/api/contact', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (!response.ok) throw new Error('Failed to submit form');
+                
+                this.innerHTML = '<div style="text-align:center;padding:2rem;"><h3 style="color:var(--accent);font-size:1.5rem;margin-bottom:1rem;">You\'re In!</h3><p style="font-size:1.1rem;">Cassidy will personally reach out within 24 hours to schedule your free strategy session.</p><p style="margin-top:1rem;font-size:0.95rem;opacity:0.8;">Check your phone - we like to call first.</p></div>';
+            } catch (error) {
+                console.error('Submission error:', error);
+                alert('Something went wrong. Please try again or call us directly.');
+                submitBtn.textContent = originalBtnText;
+                submitBtn.disabled = false;
+            }
         });
     }
 
