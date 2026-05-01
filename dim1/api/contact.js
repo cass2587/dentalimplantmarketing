@@ -71,7 +71,7 @@ export default async function handler(req, res) {
     const sanitize = (str) => str ? str.replace(/[<>]/g, '') : '';
 
     const emailPayload = {
-        sender: { email: "cassidy@manifestyourmedia.com", name: "Manifest Media Website" },
+        sender: { email: "updates@system.manifestyourmedia.com", name: "Manifest Media Website" },
         to: [{ email: "cassidy@manifestyourmedia.com", name: "Cassidy Torrey" }],
         replyTo: { email: sanitize(email), name: sanitize(name) },
         subject: `New Lead: ${sanitize(name)} from ${sanitize(practiceName) || 'Unknown Practice'}`,
