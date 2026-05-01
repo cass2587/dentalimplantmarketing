@@ -80,49 +80,109 @@ document.addEventListener('DOMContentLoaded', function() {
     if (contactForm) {
         contactForm.addEventListener('submit', async function(e) {
             e.preventDefault();
-            var submitBtn = this.querySelector('button[type="submit"]');
+            var form = this;
+            var submitBtn = form.querySelector('button[type="submit"]');
             var originalBtnText = submitBtn.textContent;
             submitBtn.textContent = 'Sending...';
             submitBtn.disabled = true;
 
-            var formData = new FormData(this);
-            var data = Object.fromEntries(formData.entries());
+            // Collect form data manually to ensure we get everything
+            var data = {
+                name: form.querySelector('[name="name"]').value,
+                practiceName: form.querySelector('[name="practiceName"]').value,
+                phone: form.querySelector('[name="phone"]').value,
+                email: form.querySelector('[name="email"]').value,
+                message: form.querySelector('[name="message"]').value
+            };
+
+            // Get the Turnstile token - try multiple methods
+            var turnstileInput = form.querySelector('[name="cf-turnstile-response"]');
+            if (turnstileInput && turnstileInput.value) {
+                data['cf-turnstile-response'] = turnstileInput.value;
+            } else if (typeof turnstile !== 'undefined') {
+                // Try getting the token from the Turnstile API directly
+                var widgetEl = form.querySelector('.cf-turnstile');
+                if (widgetEl) {
+                    var widgetId = widgetEl.getAttribute('data-widget-id');
+                    if (widgetId) {
+                        try {
+                            var token = turnstile.getResponse(widgetId);
+                            if (token) data['cf-turnstile-response'] = token;
+                        } catch(err) {
+                            console.warn('Could not get Turnstile response via API:', err);
+                        }
+                    }
+                }
+                // Also try without widget ID
+                if (!data['cf-turnstile-response']) {
+                    try {
+                        var token = turnstile.getResponse();
+                        if (token) data['cf-turnstile-response'] = token;
+                    } catch(err) {
+                        console.warn('Could not get Turnstile response:', err);
+                    }
+                }
+            }
+
+            // Also check via FormData as a final fallback
+            if (!data['cf-turnstile-response']) {
+                var formData = new FormData(form);
+                var turnstileVal = formData.get('cf-turnstile-response');
+                if (turnstileVal) data['cf-turnstile-response'] = turnstileVal;
+            }
+
+            console.log('Submitting form data:', JSON.stringify({
+                hasName: !!data.name,
+                hasEmail: !!data.email,
+                hasMessage: !!data.message,
+                hasTurnstile: !!data['cf-turnstile-response']
+            }));
 
             try {
-                const response = await fetch('/api/contact', {
+                var response = await fetch('/api/contact', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
-                
-                if (!response.ok) throw new Error('Failed to submit form');
-                
+
+                var result = await response.json();
+
+                if (!response.ok) {
+                    console.error('Server error:', response.status, result);
+                    throw new Error(result.error || 'Failed to submit form');
+                }
+
                 // Safe DOM creation to avoid TrustedHTML CSP errors
-                const container = document.createElement('div');
+                var container = document.createElement('div');
                 container.style.cssText = 'text-align:center;padding:2rem;';
-                
-                const title = document.createElement('h3');
+
+                var title = document.createElement('h3');
                 title.style.cssText = 'color:var(--accent);font-size:1.5rem;margin-bottom:1rem;';
                 title.textContent = "You're In!";
-                
-                const p1 = document.createElement('p');
+
+                var p1 = document.createElement('p');
                 p1.style.fontSize = '1.1rem';
                 p1.textContent = 'Cassidy will personally reach out within 24 hours to schedule your free strategy session.';
-                
-                const p2 = document.createElement('p');
+
+                var p2 = document.createElement('p');
                 p2.style.cssText = 'margin-top:1rem;font-size:0.95rem;opacity:0.8;';
                 p2.textContent = 'Check your phone - we like to call first.';
-                
+
                 container.appendChild(title);
                 container.appendChild(p1);
                 container.appendChild(p2);
-                
-                this.parentNode.replaceChild(container, this);
+
+                form.parentNode.replaceChild(container, form);
             } catch (error) {
-                console.error('Submission error:', error);
-                alert('Something went wrong. Please try again or call us directly.');
+                console.error('Submission error:', error.message);
+                alert('Something went wrong: ' + error.message + '\n\nPlease try again or call us directly at (603) 630-3944.');
                 submitBtn.textContent = originalBtnText;
                 submitBtn.disabled = false;
+
+                // Reset Turnstile widget for retry
+                if (typeof turnstile !== 'undefined') {
+                    try { turnstile.reset(); } catch(err) {}
+                }
             }
         });
     }
