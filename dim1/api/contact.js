@@ -3,10 +3,42 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { name, practiceName, phone, email } = req.body;
+    const { name, practiceName, phone, email, 'cf-turnstile-response': turnstileToken } = req.body;
 
     if (!name || !email) {
         return res.status(400).json({ error: 'Name and email are required' });
+    }
+
+    if (!turnstileToken) {
+        return res.status(400).json({ error: 'Turnstile verification failed (missing token)' });
+    }
+
+    const TURNSTILE_SECRET_KEY = process.env.TURNSTILE_SECRET_KEY;
+    if (!TURNSTILE_SECRET_KEY) {
+        console.error('Missing TURNSTILE_SECRET_KEY environment variable');
+        return res.status(500).json({ error: 'Server configuration error' });
+    }
+
+    // Verify Turnstile token
+    try {
+        const formData = new URLSearchParams();
+        formData.append('secret', TURNSTILE_SECRET_KEY);
+        formData.append('response', turnstileToken);
+
+        const verifyResponse = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+            method: 'POST',
+            body: formData,
+        });
+
+        const verifyResult = await verifyResponse.json();
+
+        if (!verifyResult.success) {
+            console.error('Turnstile verification failed:', verifyResult);
+            return res.status(400).json({ error: 'Turnstile verification failed' });
+        }
+    } catch (error) {
+        console.error('Error verifying Turnstile:', error);
+        return res.status(500).json({ error: 'Turnstile verification error' });
     }
 
     const BREVO_API_KEY = process.env.BREVO_API_KEY;
