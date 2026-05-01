@@ -3,10 +3,10 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { name, practiceName, phone, email, 'cf-turnstile-response': turnstileToken } = req.body;
+    const { name, practiceName, phone, email, message, 'cf-turnstile-response': turnstileToken } = req.body;
 
-    if (!name || !email) {
-        return res.status(400).json({ error: 'Name and email are required' });
+    if (!name || !email || !message) {
+        return res.status(400).json({ error: 'Name, email, and message are required' });
     }
 
     if (!turnstileToken) {
@@ -66,6 +66,9 @@ export default async function handler(req, res) {
                     <p><strong>Practice Name:</strong> ${practiceName || 'Not provided'}</p>
                     <p><strong>Phone:</strong> ${phone || 'Not provided'}</p>
                     <p><strong>Email:</strong> ${email}</p>
+                    <br/>
+                    <h3>Message:</h3>
+                    <p>${message.replace(/\n/g, '<br>')}</p>
                 `
             })
         });
