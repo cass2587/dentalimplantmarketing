@@ -97,7 +97,27 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 if (!response.ok) throw new Error('Failed to submit form');
                 
-                this.innerHTML = '<div style="text-align:center;padding:2rem;"><h3 style="color:var(--accent);font-size:1.5rem;margin-bottom:1rem;">You\'re In!</h3><p style="font-size:1.1rem;">Cassidy will personally reach out within 24 hours to schedule your free strategy session.</p><p style="margin-top:1rem;font-size:0.95rem;opacity:0.8;">Check your phone - we like to call first.</p></div>';
+                // Safe DOM creation to avoid TrustedHTML CSP errors
+                const container = document.createElement('div');
+                container.style.cssText = 'text-align:center;padding:2rem;';
+                
+                const title = document.createElement('h3');
+                title.style.cssText = 'color:var(--accent);font-size:1.5rem;margin-bottom:1rem;';
+                title.textContent = "You're In!";
+                
+                const p1 = document.createElement('p');
+                p1.style.fontSize = '1.1rem';
+                p1.textContent = 'Cassidy will personally reach out within 24 hours to schedule your free strategy session.';
+                
+                const p2 = document.createElement('p');
+                p2.style.cssText = 'margin-top:1rem;font-size:0.95rem;opacity:0.8;';
+                p2.textContent = 'Check your phone - we like to call first.';
+                
+                container.appendChild(title);
+                container.appendChild(p1);
+                container.appendChild(p2);
+                
+                this.parentNode.replaceChild(container, this);
             } catch (error) {
                 console.error('Submission error:', error);
                 alert('Something went wrong. Please try again or call us directly.');
